@@ -100,12 +100,16 @@ static NSString *PZ(NSString *s) {
     %orig(PZ(text));
 }
 - (void)setAttributedText:(NSAttributedString *)text {
-    if (!text || text.length == 0) { %orig(text); return; }
-    NSString *t = PZ(text.string);
-    if ([t isEqualToString:text.string]) { %orig(text); return; }
-    NSMutableAttributedString *m = [text mutableCopy];
-    [m replaceCharactersInRange:NSMakeRange(0, m.length) withString:t];
-    %orig(m);
+    NSAttributedString *out = text;
+    if (text.length > 0) {
+        NSString *t = PZ(text.string);
+        if (![t isEqualToString:text.string]) {
+            NSMutableAttributedString *m = [text mutableCopy];
+            [m replaceCharactersInRange:NSMakeRange(0, m.length) withString:t];
+            out = m;
+        }
+    }
+    %orig(out);
 }
 %end
 
@@ -120,12 +124,16 @@ static NSString *PZ(NSString *s) {
     %orig(PZ(text));
 }
 - (void)setAttributedText:(NSAttributedString *)text {
-    if (!text || text.length == 0) { %orig(text); return; }
-    NSString *t = PZ(text.string);
-    if ([t isEqualToString:text.string]) { %orig(text); return; }
-    NSMutableAttributedString *m = [text mutableCopy];
-    [m replaceCharactersInRange:NSMakeRange(0, m.length) withString:t];
-    %orig(m);
+    NSAttributedString *out = text;
+    if (text.length > 0) {
+        NSString *t = PZ(text.string);
+        if (![t isEqualToString:text.string]) {
+            NSMutableAttributedString *m = [text mutableCopy];
+            [m replaceCharactersInRange:NSMakeRange(0, m.length) withString:t];
+            out = m;
+        }
+    }
+    %orig(out);
 }
 %end
 
