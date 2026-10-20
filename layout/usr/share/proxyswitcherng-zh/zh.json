@@ -1,5 +1,10 @@
 {
   "Enabled": "启用",
+  "Server": "服务器",
+  "PROXY SERVER": "代理服务器",
+  "PROFILES": "代理方案",
+  "DIAGNOSTICS": "诊断",
+  "ABOUT": "关于",
   "Proxy Server": "代理服务器",
   "Port": "端口",
   "Use SOCKS proxy": "使用 SOCKS 代理",

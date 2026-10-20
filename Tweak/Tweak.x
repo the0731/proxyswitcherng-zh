@@ -25,7 +25,7 @@ static void PZLoad(void) {
 
 static void PZLog(NSString *tag, NSString *s) {
     if (!gLog) gLog = fopen("/var/mobile/psnzh.log", "a");
-    if (gLog && gLogLines < 240) {
+    if (gLog && gLogLines < 120) {
         gLogLines++;
         fprintf(gLog, "[%s] %s\n", tag.UTF8String ?: "?", s.UTF8String ?: "?");
         fflush(gLog);
@@ -59,25 +59,58 @@ static NSString *PZSubst(NSString *s) {
 static NSString *PZ(NSString *s) {
     if (![s isKindOfClass:[NSString class]] || s.length == 0) return s;
     PZLoad();
+
+    // exact match, then uppercase fallback (group headers render uppercase)
     NSString *v = gMap[s];
-    if (v) return v;
+    if (!v) v = gMap[[s uppercaseString]];
+
+    // "ProxySwitcher-ng 0.1-dev (build 30)" -> "ProxySwitcher-ng 0.1-dev（构建 30）"
+    if (!v && [s hasPrefix:@"ProxySwitcher-ng "] &&
+        [s rangeOfString:@"(build "].location != NSNotFound) {
+        NSMutableString *m = [s mutableCopy];
+        [m replaceOccurrencesOfString:@"(build " withString:@"（构建 "
+                              options:0 range:NSMakeRange(0, m.length)];
+        if ([m hasSuffix:@")"]) [m replaceCharactersInRange:NSMakeRange(m.length - 1, 1) withString:@"）"];
+        v = m;
+    }
+
+    if (v) {
+        PZLog(@"hit", [NSString stringWithFormat:@"%@ => %@", s, v]);
+        return v;
+    }
+
     if ([s rangeOfString:@"proxy" options:NSCaseInsensitiveSearch].location != NSNotFound) {
         NSString *r = PZSubst(s);
-        return [r isEqualToString:s] ? s : r;
+        if (![r isEqualToString:s]) {
+            PZLog(@"hit", [NSString stringWithFormat:@"%@ => %@", s, r]);
+            return r;
+        }
+    }
+
+    if ([s rangeOfString:@"PROXY SERVER" options:NSCaseInsensitiveSearch].location != NSNotFound ||
+        [s rangeOfString:@"PROFILES" options:NSCaseInsensitiveSearch].location != NSNotFound ||
+        [s rangeOfString:@"DIAGNOSTICS" options:NSCaseInsensitiveSearch].location != NSNotFound) {
+        PZLog(@"raw", s);
     }
     return s;
 }
 
 %hook UILabel
 - (void)setText:(NSString *)text {
-    PZLog(@"label", text ?: @"(nil)");
     %orig(PZ(text));
+}
+- (void)setAttributedText:(NSAttributedString *)text {
+    if (!text || text.length == 0) { %orig(text); return; }
+    NSString *t = PZ(text.string);
+    if ([t isEqualToString:text.string]) { %orig(text); return; }
+    NSMutableAttributedString *m = [text mutableCopy];
+    [m replaceCharactersInRange:NSMakeRange(0, m.length) withString:t];
+    %orig(m);
 }
 %end
 
 %hook PSTableCell
 - (void)setTitle:(NSString *)title {
-    PZLog(@"cell", title ?: @"(nil)");
     %orig(PZ(title));
 }
 %end
@@ -85,6 +118,14 @@ static NSString *PZ(NSString *s) {
 %hook UITextView
 - (void)setText:(NSString *)text {
     %orig(PZ(text));
+}
+- (void)setAttributedText:(NSAttributedString *)text {
+    if (!text || text.length == 0) { %orig(text); return; }
+    NSString *t = PZ(text.string);
+    if ([t isEqualToString:text.string]) { %orig(text); return; }
+    NSMutableAttributedString *m = [text mutableCopy];
+    [m replaceCharactersInRange:NSMakeRange(0, m.length) withString:t];
+    %orig(m);
 }
 %end
 
@@ -147,5 +188,4 @@ static NSString *PZ(NSString *s) {
 
 %ctor {
     PZLoad();
-    PZLog(@"CTOR", @"loaded");
 }
