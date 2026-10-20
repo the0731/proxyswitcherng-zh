@@ -1,6 +1,6 @@
 Package: com.codex.proxyswitcherngzh
 Name: ProxySwitcher-ng 中文
-Version: 1.0.1
+Version: 1.0.2
 Architecture: iphoneos-arm64
 Description: ProxySwitcher-ng 的简体中文界面（运行时翻译，不修改原插件）
 Maintainer: codex

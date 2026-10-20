@@ -3,7 +3,7 @@
 
 static NSDictionary *gMap = nil;
 static FILE *gLog = NULL;
-static int gHits = 0;
+static int gLogLines = 0;
 
 static void PZLoad(void) {
     if (gMap) return;
@@ -23,11 +23,11 @@ static void PZLoad(void) {
     gMap = @{};
 }
 
-static void PZLogHit(NSString *en, NSString *zh) {
+static void PZLog(NSString *tag, NSString *s) {
     if (!gLog) gLog = fopen("/var/mobile/psnzh.log", "a");
-    if (gLog && gHits < 80) {
-        gHits++;
-        fprintf(gLog, "%s => %s\n", en.UTF8String ?: "?", zh.UTF8String ?: "?");
+    if (gLog && gLogLines < 240) {
+        gLogLines++;
+        fprintf(gLog, "[%s] %s\n", tag.UTF8String ?: "?", s.UTF8String ?: "?");
         fflush(gLog);
     }
 }
@@ -60,10 +60,7 @@ static NSString *PZ(NSString *s) {
     if (![s isKindOfClass:[NSString class]] || s.length == 0) return s;
     PZLoad();
     NSString *v = gMap[s];
-    if (v) {
-        PZLogHit(s, v);
-        return v;
-    }
+    if (v) return v;
     if ([s rangeOfString:@"proxy" options:NSCaseInsensitiveSearch].location != NSNotFound) {
         NSString *r = PZSubst(s);
         return [r isEqualToString:s] ? s : r;
@@ -73,7 +70,15 @@ static NSString *PZ(NSString *s) {
 
 %hook UILabel
 - (void)setText:(NSString *)text {
+    PZLog(@"label", text ?: @"(nil)");
     %orig(PZ(text));
+}
+%end
+
+%hook PSTableCell
+- (void)setTitle:(NSString *)title {
+    PZLog(@"cell", title ?: @"(nil)");
+    %orig(PZ(title));
 }
 %end
 
@@ -142,5 +147,5 @@ static NSString *PZ(NSString *s) {
 
 %ctor {
     PZLoad();
-    PZLogHit(@"CTOR", @"loaded");
+    PZLog(@"CTOR", @"loaded");
 }
