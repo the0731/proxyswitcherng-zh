@@ -2,6 +2,7 @@
 #import <Foundation/Foundation.h>
 
 static NSDictionary *gMap = nil;
+static NSDictionary *gLower = nil;
 static FILE *gLog = NULL;
 static int gLogLines = 0;
 
@@ -17,10 +18,16 @@ static void PZLoad(void) {
         id obj = [NSJSONSerialization JSONObjectWithData:d options:0 error:nil];
         if ([obj isKindOfClass:[NSDictionary class]]) {
             gMap = obj;
+            NSMutableDictionary *lower = [NSMutableDictionary dictionary];
+            for (NSString *k in gMap) {
+                if ([k isKindOfClass:[NSString class]]) lower[[k lowercaseString]] = gMap[k];
+            }
+            gLower = lower;
             return;
         }
     }
     gMap = @{};
+    gLower = @{};
 }
 
 static void PZLog(NSString *tag, NSString *s) {
@@ -60,9 +67,9 @@ static NSString *PZ(NSString *s) {
     if (![s isKindOfClass:[NSString class]] || s.length == 0) return s;
     PZLoad();
 
-    // exact match, then uppercase fallback (group headers render uppercase)
+    // exact match, then case-insensitive match (group headers render uppercase)
     NSString *v = gMap[s];
-    if (!v) v = gMap[[s uppercaseString]];
+    if (!v) v = gLower[[s lowercaseString]];
 
     // "ProxySwitcher-ng 0.1-dev (build 30)" -> "ProxySwitcher-ng 0.1-dev（构建 30）"
     if (!v && [s hasPrefix:@"ProxySwitcher-ng "] &&
@@ -92,6 +99,13 @@ static NSString *PZ(NSString *s) {
         [s rangeOfString:@"DIAGNOSTICS" options:NSCaseInsensitiveSearch].location != NSNotFound) {
         PZLog(@"raw", s);
     }
+    BOOL hasLower = NO, hasUpper = NO;
+    for (NSUInteger i = 0; i < s.length; i++) {
+        unichar c = [s characterAtIndex:i];
+        if (c >= 'a' && c <= 'z') hasLower = YES;
+        if (c >= 'A' && c <= 'Z') hasUpper = YES;
+    }
+    if (hasUpper && !hasLower && s.length > 3) PZLog(@"rawUpper", s);
     return s;
 }
 
